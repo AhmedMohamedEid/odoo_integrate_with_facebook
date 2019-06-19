@@ -1,6 +1,13 @@
 # -*- coding: utf-8 -*-
 
+import tempfile
+import base64
+import os
+from PIL import Image
+
 from odoo import models, fields, api
+from odoo.exceptions import UserError ,ValidationError
+
 import facebook
 from datetime import datetime
 
@@ -27,84 +34,97 @@ class FacebookPosts(models.Model):
 
     title = fields.Char(string="Title", required=False, )
     page_config_id = fields.Many2one(comodel_name="facebook.pages.config", string="Pages", required=True, )
-    publish_date = fields.Datetime(string="Published On" )
+    publish_date = fields.Datetime(string="Published On",copy=False )
 
     message = fields.Text(string="Messege", required=True, )
 
-    on_create_date = fields.Datetime(string="Create On", default=fields.Datetime.now(), required=False, )
+    on_create_date = fields.Datetime(string="Create On", default=fields.Datetime.now(),copy=False, required=False, )
 
-    facebook_post_id = fields.Char(string="Facebook ID", required=False, )
+    facebook_post_id = fields.Char(string="Facebook ID",copy=False, required=False, )
 
-    link = fields.Char(string="Link", required=False, )
+    link = fields.Char(string="Link", required=False, copy=False )
 
-    image = fields.Binary(string="Image")
+    image = fields.Binary(string="Image", copy=False)
 
-    state = fields.Selection(string="State", selection=[('draft', 'Draft'), ('publish', 'Published'), ], default="draft" ,required=False, )
+    state = fields.Selection(string="State", selection=[('draft', 'Draft'), ('publish', 'Published'),('removed','Removed') ], default="draft", copy=False ,required=False, )
 
     comments_ids = fields.One2many(comodel_name="fb.post.comment", inverse_name="post_id", string="Comments", required=False, )
+    comment_count = fields.Integer(string="Comment Count", compute="get_comment_count", required=False, )
+    like_count = fields.Integer(string="Like Count", required=False, copy=False )
 
-
+    liked = fields.Boolean(string="Liked",  )
     # def access_token(self):
     #     graph = facebook.GraphAPI(access_token=self.page_config_id.access_token,
     #                               version=self.page_config_id.fb_api_version)
     #     return graph
 
+    _sql_constraints = [
+        ('unique_facebook_id','unique(facebook_post_id)',"Facebook Must be Unique!")
+    ]
 
+    def graph_api(self ):
+        return facebook.GraphAPI(access_token=self.page_config_id.access_token, version=self.page_config_id.fb_api_version)
 
-    import tempfile
-    import base64
-    import os
+    def put_like_for_this_post(self):
+        all_likes = self.graph_api().get_object(id=self.facebook_post_id, fields="likes{id}")
+        if not self.page_config_id.page_id in all_likes['likes']["data"]:
+            # self.graph_api().put_like(object_id=self.facebook_post_id)
+            print("not liked")
 
-    from PIL import Image
+    def get_likes(self):
+        post_like = self.graph_api().get_object(id=self.facebook_post_id, fields="likes{id,name}")
+        like_data = post_like["likes"]["data"]
+        self.like_count = len(like_data)
+        print(like_data,len(like_data))
 
-    from openerp import models, fields, api
-    from openerp.exceptions import UserError
+    @api.multi
+    def open_image(self):
+        self.ensure_one()
+        if not self.image:
+            raise UserError("no image on this record")
+        # decode the base64 encoded data
+        data = base64.decodebytes(self.image)
 
-    class MyModel(models.Model):
-        [...]
-        image = fields.Binary()
+        print(data)
+        print(self.image)
+        # create a temporary file, and save the image
+        fobj = tempfile.NamedTemporaryFile(delete=False)
+        fname = fobj.name
+        fobj.write(data)
+        fobj.close()
+        print(fname)
+        # # open the image with PIL
+        try:
+            image = Image.open(fname)
+            print(image)
+        #     # do stuff here
+        finally:
+            # delete the file when done
+            os.unlink(fname)
 
-        @api.multi
-        def open_image(self):
-            self.ensure_one()
-            if not self.image:
-                raise UserError("no image on this record")
-            # decode the base64 encoded data
-            data = base64.decodestring(self.image)
-            # create a temporary file, and save the image
-            fobj = tempfile.NamedTemporaryFile(delete=False)
-            fname = fobj.name
-            fobj.write(data)
-            fobj.close()
-            # open the image with PIL
-            try:
-                image = Image.open(fname)
-                # do stuff here
-            finally:
-                # delete the file when done
-                os.unlink(fname)
 
     def publish_post_facebook(self):
+        if self.state == "publish":
+            post = self.env["facebook.posts"]
+            print(post)
 
-        graph = facebook.GraphAPI(access_token=self.page_config_id.access_token, version=self.page_config_id.fb_api_version)
+        else:
+            self.graph_api().put_object(parent_object=self.page_config_id.page_id, connection_name="feed", message=self.message, link=self.link or None)
+            post = self.graph_api().get_object(id=self.page_config_id.page_id, fields="posts{id,created_time}")
+            # profile = graph.get_object(id ="me", fields="id,name,email")
+            # for id in post['posts']
 
-        graph.put_object(parent_object=self.page_config_id.page_id, connection_name="feed", message=self.message, link=self.link or None)
+            post_ids_list = post['posts']['data']
+            self.facebook_post_id = post_ids_list[0]['id']
 
-        post = graph.get_object(id=self.page_config_id.page_id, fields="posts{id,created_time}")
-        # profile = graph.get_object(id ="me", fields="id,name,email")
-        # for id in post['posts']
+            self.publish_date = datetime.now()
+            print(self.publish_date)
 
-        post_ids_list = post['posts']['data']
-        self.facebook_post_id = post_ids_list[0]['id']
+            # print(datetime.strptime(post_ids_list[0]['created_time'], "%m %d %Y $H:%M:%S"))
 
-        self.publish_date = datetime.now()
-        print(self.publish_date)
+            print(self.facebook_post_id)
 
-        # print(datetime.strptime(post_ids_list[0]['created_time'], "%m %d %Y $H:%M:%S"))
-
-        print(self.facebook_post_id)
-
-        self.state = "publish"
+            self.state = "publish"
 
 
 
@@ -118,34 +138,58 @@ class FacebookPosts(models.Model):
 
 
     def fetch_comment(self):
-        graph = facebook.GraphAPI(access_token=self.page_config_id.access_token,
-                                  version=self.page_config_id.fb_api_version)
-        posts_comment = graph.get_object(id=self.facebook_post_id, fields="comments")
-
-        comment_data = posts_comment['comments']['data']
-
+        posts_comment = self.graph_api().get_object(id=self.facebook_post_id, fields="comments")
         fb_comment = self.env['fb.post.comment']
+        # comment_data = posts_comment['comments']
+        if "comments" in posts_comment:
+            comment_data = posts_comment['comments']['data']
+            for msg in comment_data:
+                if not  self.comments_ids.filtered(lambda f: f.facebook_comment_id == msg['id']):
+                    fb_comment.create({
+                        'post_id'           : self.id,
+                        'create_by_fb_id'   : msg['from']['id'],
+                        "create_by"         : msg['from']['name'],
+                        "create_time"       : msg['created_time'],
+                        "comments"          : msg['message'],
+                        "facebook_comment_id" : msg['id'],
+                    })
+                else:
+                    pass
+                    # raise ValidationError("This is Not Found a new Comment just mow!")
 
-        for msg in comment_data:
-            print(msg['created_time'])
-            print(msg['id'])
-            print(msg['message'])
-            print(msg['from']['name'])
-            print("==========")
+            print(comment_data,len(comment_data),self.comment_count)
+        else:
+            raise ValidationError("This is Not Found Comment just mow!")
 
-            if not  self.comments_ids.filtered(lambda f: f.facebook_comment_id == msg['id']):
-                fb_comment.create({
-                    'post_id': self.id,
-                    'create_by_fb_id' : msg['from']['id'],
-                    "create_by" : msg['from']['name'],
-                    "create_time" : msg['created_time'],
-                    "comments" : msg['message'],
-                    "facebook_comment_id" : msg['id'],
-                })
-            else:
-                print("your Post is updated")
 
-        print(comment_data,len(comment_data))
+
+    @api.depends("comments_ids")
+    def get_comment_count(self):
+        self.comment_count = len(self.comments_ids)
+
+
+
+    def delete_facebook_post(self):
+        self.graph_api().delete_object(id=self.facebook_post_id)
+        self.state = "removed"
+
+
+    # print(comment_data,len(comment_data))
+    # return len(comment_data)
+#
+# class DeleteFacebookPost(models.TransientModel):
+#     _name = 'delete.facebook.post'
+#     _description = 'Delete Posts from Facebook'
+#
+#
+#
+#     def delete_facebook_post(self):
+#         context = dict(self._context or {})
+#         active_id = context.get('active_ids', []) or []
+#
+#         FacebookPosts.graph_api(self).delete_object(id=self.facebook_post_id)
+#         self.state = "removed"
+
 
 
 

@@ -58,36 +58,69 @@
                   <header>
                       <button name="publish_post_facebook" string="Publish" class="oe_highlight" states="draft" type="object"/>
                       <button name="publish_post_facebook" string="Republish" class="oe_highlight" states="publish" type="object"/>
-                      <button name="fetch_comment" string="Fetch Comment" class="oe_highlight" states="publish" type="object"/>
-                      <button name="test_date" string="test Date" class="oe_highlight" states="publish" type="object"/>
-                      <field name="state" widget="statusbar" statusbar_visible="draft,publish" clickable="1" />
+                      <!--<button name="fetch_comment" string="Fetch Comment" class="oe_highlight" states="publish" type="object"/>-->
+                      <!--<button name="test_date" string="test Date" class="oe_highlight" states="publish" type="object"/>-->
+                      <!--<button name="get_likes" string="Get Like Count" class="oe_highlight" states="publish" type="object"/>-->
+                      <button name="delete_facebook_post" string="Remove FB Post" states="publish" type="object" confirm="Are You Sure Delete This Post From Facebook"/>
+                      <field name="state" widget="statusbar" statusbar_visible="draft,publish,removed" clickable="1" />
                   </header>
                   <sheet>
+                      <div class="oe_button_box" name="button_box">
+                          <button name="get_likes" type="object" widget="statinfo" class="oe_stat_button" icon="fa-thumbs-o-up">
+                                <div class="o_stat_info o_field_widget">
+                                    <span class="o_stat_text">Like</span>
+                                    <field name="like_count" readonly="1" />
+                                </div>
+                          </button>
+                          <button name="fetch_comment" type="object" widget="statinfo" class="oe_stat_button" icon="fa-comments-o">
+                                <div class="o_stat_info o_field_widget">
+                                    <span class="o_stat_text">Comment</span>
+                                    <field name="comment_count" />
+                                </div>
+                          </button>
+                      </div>
+
                       <div class="oe_title">
                           <label for="title" class="oe_edit_only"/>
                           <h1>
                               <field name="title" placeholder="......"/>
                           </h1>
                       </div>
+
                       <group col="4">
                           <field name="page_config_id"/>
-                          <field name="on_create_date"/>
-                          <field name="publish_date"/>
-                          <field name="facebook_post_id"/>
+                          <field name="on_create_date" readonly="1"/>
+                          <field name="publish_date" readonly="1"/>
+                          <field name="facebook_post_id" invisible="1"/>
                       </group>
                       <notebook>
                           <page string="Message">
                               <group>
                                   <field name="message" nolabel="1"/>
                               </group>
+                              <button name="put_like_for_this_post" type="object" string="check Like"/>
                               <group>
                                   <field name="link" nolabel="0"/>
-                                  <field name="image" nolabel="0"/>
+                              </group>
+                          </page>
+                          <page string="Photos">
+                              <group>
+                                  <button name="open_image" type="object" string="test Image"/>
+                                  <field name="image" widget="image" options="{'preview_image': 'image'}" />
                               </group>
                           </page>
                           <page string="Comments">
                               <group>
-                                  <field name="comments_ids" nolabel="1"/>
+                                  <field name="comments_ids" nolabel="1">
+                                      <tree>
+                                            <field name="post_id" invisible="1"/>
+                                            <field name="create_by_fb_id" invisible="1"/>
+                                            <field name="create_by"/>
+                                            <field name="create_time"/>
+                                            <field name="comments"/>
+                                            <field name="facebook_comment_id" invisible="1"/>
+                                      </tree>
+                                  </field>
                               </group>
                           </page>
                       </notebook>
@@ -95,6 +128,19 @@
               </form>
           </field>
       </record>
+
+
+        <!--TODO: Add Action button in Dropdown menu "Action" to Set State Done by using Wizard -->
+        <!--<act_window id="delete_post_form_facebook"-->
+            <!--multi="True"-->
+            <!--key2="client_action_multi"-->
+            <!--name="Delete Facebook Post"-->
+            <!--src_model="facebook.posts"-->
+            <!--res_model="delete.facebook.post"-->
+            <!--view_mode="form" target="new" view_type="form"-->
+
+        <!--/>-->
+
 
     <record id="view_facebook_posts_tree" model="ir.ui.view">
         <field name="name">view.facebook.posts.tree</field>

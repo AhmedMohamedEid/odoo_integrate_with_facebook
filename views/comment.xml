@@ -28,7 +28,7 @@
             <field name="name">view.fb.post.comment.tree</field>
             <field name="model">fb.post.comment</field>
             <field name="arch" type="xml">
-                <tree string="Comments">
+                <tree string="Comments" default_order='create_date desc'>
                    <field name="post_id"/>
                    <field name="create_by_fb_id"/>
                    <field name="create_by"/>
