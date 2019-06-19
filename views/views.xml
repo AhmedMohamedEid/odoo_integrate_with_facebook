@@ -1,0 +1,122 @@
+<odoo>
+  <data>
+
+    <record id="view_facebook_pages_form" model="ir.ui.view">
+        <field name="name">view.facebook.pages.config.form</field>
+        <field name="model">facebook.pages.config</field>
+        <field name="arch" type="xml">
+            <form string="Facebook Pages">
+                <sheet>
+                    <group>
+                        <field name="name"/>
+                        <field name="access_token" password="1" class="oe_edit_only"/>
+                        <field name="page_id" password="1"/>
+                        <field name="fb_api_version" placeholder="Graph API Explorer Version like 3.3"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_facebook_pages_tree" model="ir.ui.view">
+        <field name="name">view.facebook.pages.config.tree</field>
+        <field name="model">facebook.pages.config</field>
+        <field name="arch" type="xml">
+            <tree string="Facebook pages">
+                <field name="name"/>
+                <!--<field name="access_token"/>-->
+                <field name="fb_api_version" />
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_facebook_pages_action" model="ir.actions.act_window">
+        <field name="name">Facebook Pages</field>
+        <field name="type">ir.actions.act_window</field>
+        <field name="res_model">facebook.pages.config</field>
+        <field name="view_mode">tree,form</field>
+        <field name="help" type="html">
+          <p class="oe_view_nocontent_create">
+            <!-- Add Text Here -->
+          </p><p>
+            <!-- More details about what a user can do with this object will be OK -->
+          </p>
+        </field>
+    </record>
+
+    <menuitem id="facebook_menu_root" name="Facebook" sequence="5"/>
+    <menuitem id="facebook_menu_categ" name="Configration" parent="facebook_menu_root" sequence="2"/>
+    <menuitem id="facebook_menu_pages_action" name="Pages" parent="facebook_menu_categ" action="view_facebook_pages_action" sequence="1"/>
+
+
+
+      <record id="view_facebook_posts_form" model="ir.ui.view">
+          <field name="name">view.facebook.posts.form</field>
+          <field name="model">facebook.posts</field>
+          <field name="arch" type="xml">
+              <form string="Facebook Post">
+                  <header>
+                      <button name="publish_post_facebook" string="Publish" class="oe_highlight" states="draft" type="object"/>
+                      <button name="publish_post_facebook" string="Republish" class="oe_highlight" states="publish" type="object"/>
+                      <button name="fetch_comment" string="Fetch Comment" class="oe_highlight" states="publish" type="object"/>
+                      <button name="test_date" string="test Date" class="oe_highlight" states="publish" type="object"/>
+                      <field name="state" widget="statusbar" statusbar_visible="draft,publish" clickable="1" />
+                  </header>
+                  <sheet>
+                      <div class="oe_title">
+                          <label for="title" class="oe_edit_only"/>
+                          <h1>
+                              <field name="title" placeholder="......"/>
+                          </h1>
+                      </div>
+                      <group col="4">
+                          <field name="page_config_id"/>
+                          <field name="on_create_date"/>
+                          <field name="publish_date"/>
+                          <field name="facebook_post_id"/>
+                      </group>
+                      <notebook>
+                          <page string="Message">
+                              <group>
+                                  <field name="message" nolabel="1"/>
+                              </group>
+                              <group>
+                                  <field name="link" nolabel="0"/>
+                                  <field name="image" nolabel="0"/>
+                              </group>
+                          </page>
+                          <page string="Comments">
+                              <group>
+                                  <field name="comments_ids" nolabel="1"/>
+                              </group>
+                          </page>
+                      </notebook>
+                  </sheet>
+              </form>
+          </field>
+      </record>
+
+    <record id="view_facebook_posts_tree" model="ir.ui.view">
+        <field name="name">view.facebook.posts.tree</field>
+        <field name="model">facebook.posts</field>
+        <field name="arch" type="xml">
+            <tree string="Facebook Posts">
+                <field name="title"/>
+                <field name="page_config_id"/>
+                <field name="publish_date"/>
+            </tree>
+        </field>
+    </record>
+
+
+      <record id="view_facebook_posts_action" model="ir.actions.act_window">
+          <field name="name">Facebook Posts</field>
+          <field name="type">ir.actions.act_window</field>
+          <field name="res_model">facebook.posts</field>
+          <field name="view_mode">tree,form</field>
+      </record>
+
+      <!-- This Menu Item must have a parent and an action -->
+      <menuitem id="facebook_post_menu_action" name="Posts" parent="facebook_menu_root" action="view_facebook_posts_action" sequence="1"/>
+  </data>
+</odoo>

@@ -1,0 +1,4 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_facebook_pages,Facebook Pages Config,model_facebook_pages_config,,1,1,1,1
+access_facebook_posts,Facebook Posts,model_facebook_posts,,1,1,1,1
+access_facebook_posts_comments,Facebook Posts Comment,model_fb_post_comment,,1,1,1,1
