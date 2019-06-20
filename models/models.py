@@ -23,7 +23,16 @@ class FacebookPagesConfig(models.Model):
     page_id = fields.Char(string="Page ID", required=True, )
     fb_api_version = fields.Char(string="Graph API", default="3.3", required=False, )
 
+    posts_ids = fields.One2many(comodel_name="facebook.posts", inverse_name="page_config_id", string="Posts", required=False, )
 
+    @api.model
+    def fetch_all_comment(self):
+        for po in self:
+            posts__search = self.env['facebook.posts'].search([("page_config_id", "=", po.id)])
+            for post in posts__search:
+                if not post.state == "removed":
+                    FacebookPosts.fetch_comment(post)
+                    print(post.title)
 
 
 
@@ -63,11 +72,17 @@ class FacebookPosts(models.Model):
     ]
 
     def graph_api(self ):
-        return facebook.GraphAPI(access_token=self.page_config_id.access_token, version=self.page_config_id.fb_api_version)
+        try:
+            graph = facebook.GraphAPI(access_token=self.page_config_id.access_token, version=self.page_config_id.fb_api_version)
+        except facebook.GraphAPIError as e:
+            print(e.message)
+        return graph
+
 
     def put_like_for_this_post(self):
         all_likes = self.graph_api().get_object(id=self.facebook_post_id, fields="likes{id}")
-        if not self.page_config_id.page_id in all_likes['likes']["data"]:
+        print(all_likes)
+        if not self.page_config_id.page_id == all_likes["id"]:
             # self.graph_api().put_like(object_id=self.facebook_post_id)
             print("not liked")
 
@@ -138,34 +153,36 @@ class FacebookPosts(models.Model):
 
 
     def fetch_comment(self):
-        posts_comment = self.graph_api().get_object(id=self.facebook_post_id, fields="comments")
-        fb_comment = self.env['fb.post.comment']
-        # comment_data = posts_comment['comments']
-        if "comments" in posts_comment:
-            comment_data = posts_comment['comments']['data']
-            for msg in comment_data:
-                if not  self.comments_ids.filtered(lambda f: f.facebook_comment_id == msg['id']):
-                    fb_comment.create({
-                        'post_id'           : self.id,
-                        'create_by_fb_id'   : msg['from']['id'],
-                        "create_by"         : msg['from']['name'],
-                        "create_time"       : msg['created_time'],
-                        "comments"          : msg['message'],
-                        "facebook_comment_id" : msg['id'],
-                    })
-                else:
-                    pass
-                    # raise ValidationError("This is Not Found a new Comment just mow!")
+        for comment in self:
+            posts_comment = comment.graph_api().get_object(id=comment.facebook_post_id, fields="comments")
+            fb_comment = self.env['fb.post.comment']
+            # comment_data = posts_comment['comments']
+            if "comments" in posts_comment:
+                comment_data = posts_comment['comments']['data']
+                for msg in comment_data:
+                    if not  comment.comments_ids.filtered(lambda f: f.facebook_comment_id == msg['id']):
+                        fb_comment.create({
+                            'post_id'           : comment.id,
+                            'create_by_fb_id'   : msg['from']['id'],
+                            "create_by"         : msg['from']['name'],
+                            "create_time"       : msg['created_time'],
+                            "comments"          : msg['message'],
+                            "facebook_comment_id" : msg['id'],
+                        })
+                    else:
+                        pass
+                        # raise ValidationError("This is Not Found a new Comment just mow!")
 
-            print(comment_data,len(comment_data),self.comment_count)
-        else:
-            raise ValidationError("This is Not Found Comment just mow!")
+                print(comment_data,len(comment_data),comment.comment_count)
+            else:
+                raise ValidationError("This is Not Found Comment just mow!")
 
 
 
     @api.depends("comments_ids")
     def get_comment_count(self):
-        self.comment_count = len(self.comments_ids)
+        for comment in self:
+            comment.comment_count = len(comment.comments_ids)
 
 
 
